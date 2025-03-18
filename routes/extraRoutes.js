@@ -34,6 +34,13 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign({ id: user._id, email: user.email }, jwtSecret, {});
 
+    // **Cookie orqali token jo‘natish**
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+    });
+
     return res.status(200).json({ message: "login" });
   } catch (error) {
     console.error(error);
@@ -43,54 +50,19 @@ router.post("/login", async (req, res) => {
 
 router.get("/profile", async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split("Bearer ")[1];
+    const token = req.cookies.token;
+    if (!token) return res.status(404).json({ message: "token topilmadi." });
 
-      jwt.verify(token, jwtSecret, {}, async (err, userDoc) => {
-        if (err) {
-          return res.status(401).json({ message: "Invalid token" });
-        }
+    const userDoc = jwt.verify(token, jwtSecret);
 
-        try {
-          const user = await User.findById(userDoc.id);
-          if (!user) {
-            return res.status(404).json({ message: "User not found" });
-          }
+    if (!userDoc) return res.status(401).json({ message: "invalid token" });
+    const user = await User.findById(userDoc.id).select(
+      "_id email username name bio avatar verificated check balance"
+    );
 
-          const {
-            _id,
-            email,
-            username,
-            name,
-            bio,
-            avatar,
-            verificated,
-            check,
-            balance,
-          } = user;
-          res.json({
-            _id,
-            email,
-            username,
-            name,
-            bio,
-            avatar,
-            verificated,
-            check,
-            balance,
-          });
-        } catch (error) {
-          console.log(error);
-          res.status(500).json({ message: "Server error" });
-        }
-      });
-    } else {
-      res.status(401).json({ message: "No token provided" });
-    }
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "login xato", error: error.message });
   }
 });
 

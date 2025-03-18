@@ -9,6 +9,7 @@ const path = require("path");
 const rateLimit = require("express-rate-limit");
 const cors = require("cors");
 const logger = require("./middleware/logger");
+const cookieParser = require("cookie-parser");
 // const morgan = require("morgan");
 
 // wallet_system
@@ -75,6 +76,9 @@ conn.once("open", function () {
 
 app.use("/file", upload);
 app.use(express.json());
+
+// coookie-parser
+app.use(cookieParser());
 
 // media routes
 app.get("/file/:filename", async (req, res) => {
