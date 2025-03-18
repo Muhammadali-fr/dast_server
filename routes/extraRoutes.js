@@ -22,9 +22,9 @@ router.post("/login", async (req, res) => {
       return res.status(400).send("User not found");
     }
 
-    if (user.verificated !== true) {
-      return res.status(400).send("Your account is not verified");
-    }
+    // if (user.verificated !== true) {
+    //   return res.status(400).send("Your account is not verified");
+    // }
 
     const isMatch = await bcryptjs.compare(password, user.password);
 
@@ -34,10 +34,10 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign({ id: user._id, email: user.email }, jwtSecret, {});
 
-    return res.send(token);
+    return res.status(200).json({ message: "login" });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Server error");
+    res.status(500).json({ message: "server xatosi", error: error.message });
   }
 });
 
