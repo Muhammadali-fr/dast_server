@@ -19,7 +19,7 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).send("User not found");
+      return res.status(404).send("User not found");
     }
 
     // if (user.verificated !== true) {
@@ -41,7 +41,7 @@ router.post("/login", async (req, res) => {
       sameSite: "None",
     });
 
-    return res.status(200).json({ message: "login" });
+    return res.status(200).json({ message: "login", token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "server xatosi", error: error.message });
