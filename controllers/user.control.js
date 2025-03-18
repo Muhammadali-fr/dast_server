@@ -68,7 +68,7 @@ const addUser = async (req, res) => {
     });
     await newUser.save();
 
-    res.status(200).json({ message: "kskds" });
+    res.status(200).json({ message: "you have created account." });
     // return res.status(201).send(newUser);
 
     // .then((result) => {
