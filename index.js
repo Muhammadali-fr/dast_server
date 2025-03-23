@@ -67,7 +67,16 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    allowedHeaders:
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+  })
+);
+
 const conn = mongoose.connection;
 conn.once("open", function () {
   gfs = Grid(conn.db, mongoose.mongo);

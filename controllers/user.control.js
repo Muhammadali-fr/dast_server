@@ -2,8 +2,10 @@ const User = require("../models/user.model");
 const bcryptjs = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const OTP = require("../models/otp.model");
+const jwt = require("jsonwebtoken");  
 
 const cyfer = bcryptjs.genSaltSync(8);
+const jwtSecret = process.env.JWT_SECRET
 
 // mothod: get
 // get all users
@@ -68,12 +70,14 @@ const addUser = async (req, res) => {
     });
     await newUser.save();
 
-    res.status(200).json({ message: "you have created account." });
-    // return res.status(201).send(newUser);
+    const token = jwt.sign(
+      { id: newUser._id, email: newUser.email },
+      jwtSecret
+    );
 
-    // .then((result) => {
-    //   sendOTPverification(result, res);
-    // });
+    res.cookie("token", token);
+
+    res.status(200).json({ message: "you have created account." });
   } catch (err) {
     res
       .status(500)
