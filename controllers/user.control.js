@@ -2,10 +2,10 @@ const User = require("../models/user.model");
 const bcryptjs = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const OTP = require("../models/otp.model");
-const jwt = require("jsonwebtoken");  
+const jwt = require("jsonwebtoken");
 
 const cyfer = bcryptjs.genSaltSync(8);
-const jwtSecret = process.env.JWT_SECRET
+const jwtSecret = process.env.JWT_SECRET;
 
 // mothod: get
 // get all users

@@ -18,6 +18,7 @@ const userSchame = mongoose.Schema({
   },
   avatar: {
     type: String,
+    default: "default.png",
   },
   email: {
     type: String,
