@@ -77,7 +77,7 @@ const addUser = async (req, res) => {
 
     res.cookie("token", token);
 
-    res.status(200).json({ message: "you have created account." });
+    res.status(200).json({ message: "you have created account.", token });
   } catch (err) {
     res
       .status(500)

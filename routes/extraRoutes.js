@@ -8,7 +8,7 @@ const router = express.Router();
 
 const User = require("../models/user.model");
 // const Comment = require("../models/comments.model");
-const jwtSecret = process.env.JWT_SECTER;
+const jwtSecret = process.env.JWT_SECRET;
 
 // login part codes
 router.post("/login", async (req, res) => {
@@ -41,7 +41,9 @@ router.post("/login", async (req, res) => {
       sameSite: "None",
     });
 
-    return res.status(200).json({ message: "login", token });
+    return res
+      .status(200)
+      .json({ message: "you have succefully logged in.", token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "server xatosi", error: error.message });

@@ -10,15 +10,98 @@ const rateLimit = require("express-rate-limit");
 const cors = require("cors");
 const logger = require("./middleware/logger");
 const cookieParser = require("cookie-parser");
-// const morgan = require("morgan");
 
-// wallet_system
+// 🔹 Fayl yuklash hajmini oshirish (50MB)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// const morganFormat =
-//   ":method :url :status :res[content-length] #--in_time--# :response-time ms";
+// Cookie parser
+app.use(cookieParser());
 
-// swaggers controllers
+// CORS sozlash
+app.use(
+  cors({
+    origin: true,
+    credentials: true, // Cookie ni yuborish uchun
+  })
+);
 
+// Logger middleware
+app.use((req, res, next) => {
+  const startHrTime = process.hrtime();
+  res.on("finish", () => {
+    const elapsedHrTime = process.hrtime(startHrTime);
+    const elapsedTimeInMs = (
+      elapsedHrTime[0] * 1000 +
+      elapsedHrTime[1] / 1e6
+    ).toFixed(2);
+    logger.info(`[${req.method}] ${req.originalUrl} ${elapsedTimeInMs}ms`);
+  });
+  next();
+});
+
+// MongoDB ulanishi
+let gfs;
+connection();
+const conn = mongoose.connection;
+conn.once("open", function () {
+  gfs = Grid(conn.db, mongoose.mongo);
+  gfs.collection("photos");
+});
+
+// Fayllar yo‘nalishi
+app.use("/file", upload);
+
+// Media fayllarni olish
+app.get("/file/:filename", async (req, res) => {
+  try {
+    const file = await gfs.files.findOne({ filename: req.params.filename });
+    const readStream = gfs.createReadStream(file.filename);
+    readStream.pipe(res);
+  } catch (error) {
+    res.send("not found");
+  }
+});
+
+// Fayllarni o‘chirish
+app.delete("/file/:filename", async (req, res) => {
+  try {
+    await gfs.files.deleteOne({ filename: req.params.filename });
+    res.send("success");
+  } catch (error) {
+    console.log(error);
+    res.send("An error occured.");
+  }
+});
+
+// 🔹 API yo‘nalishlari
+const { router } = require("./routes/extraRoutes");
+const user = require("./routes/users");
+const multitude = require("./routes/multitude");
+const post = require("./routes/post");
+const follow = require("./routes/follows");
+const save = require("./routes/saves");
+const likes = require("./routes/likes");
+const comment = require("./routes/comments");
+const admin_main = require("./routes/admin");
+const store = require("./store/store");
+const invertory = require("./store/inventory");
+const recommendations = require("./recommendations");
+
+app.use("/", router);
+app.use("/api/users", user);
+app.use("/api/multitude", multitude);
+app.use("/api/posts", post);
+app.use("/system/follows", follow);
+app.use("/system/saves", save);
+app.use("/system/likes", likes);
+app.use("/api/comments", comment);
+app.use("/admin/panel", admin_main);
+app.use("/store", store);
+app.use("/invertory", invertory);
+app.use("/recommendations", recommendations);
+
+// Swagger sozlash
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsDoc = require("swagger-jsdoc");
 
@@ -31,131 +114,14 @@ const swaggerOptions = {
       description: "specially for dast in 2024 and 2025",
     },
   },
-  apis: ["./routes/*.js", "index.js", "./recommendations.js", "./store/*.js"], // Path to API docs
+  apis: ["./routes/*.js", "index.js", "./recommendations.js", "./store/*.js"],
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// swagger
-
-let gfs;
-connection();
-
-app.use((req, res, next) => {
-  const startHrTime = process.hrtime();
-
-  res.on("finish", () => {
-    const elapsedHrTime = process.hrtime(startHrTime);
-    const elapsedTimeInMs = (
-      elapsedHrTime[0] * 1000 +
-      elapsedHrTime[1] / 1e6
-    ).toFixed(2);
-    const logMessage = `[${req.method}] ${req.originalUrl} ${elapsedTimeInMs}ms`; // Add request method
-    logger.info(logMessage);
-  });
-
-  next();
-});
-
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  next();
-});
-
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    allowedHeaders:
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-  })
-);
-
-const conn = mongoose.connection;
-conn.once("open", function () {
-  gfs = Grid(conn.db, mongoose.mongo);
-  gfs.collection("photos");
-});
-
-app.use("/file", upload);
-app.use(express.json());
-
-// coookie-parser
-app.use(cookieParser());
-
-// media routes
-app.get("/file/:filename", async (req, res) => {
-  try {
-    const file = await gfs.files.findOne({ filename: req.params.filename });
-    const readStream = gfs.createReadStream(file.filename);
-    readStream.pipe(res);
-  } catch (error) {
-    res.send("not found");
-  }
-});
-
-app.delete("/file/:filename", async (req, res) => {
-  try {
-    await gfs.files.deleteOne({ filename: req.params.filename });
-    res.send("success");
-  } catch (error) {
-    console.log(error);
-    res.send("An error occured.");
-  }
-});
-
-// requiring routes
-const { router } = require("./routes/extraRoutes");
-const user = require("./routes/users");
-const multitude = require("./routes/multitude");
-const post = require("./routes/post");
-const follow = require("./routes/follows");
-const save = require("./routes/saves");
-const likes = require("./routes/likes");
-const comment = require("./routes/comments");
-
-// admin part
-const admin_main = require("./routes/admin");
-
-// store part
-const store = require("./store/store");
-const invertory = require("./store/inventory");
-
-// recommendations
-const recommendations = require("./recommendations");
-const { stream } = require("winston");
-const swaggerJSDoc = require("swagger-jsdoc");
-
-// using routes
-app.use("/", router);
-app.use("/api/users", user);
-app.use("/api/multitude", multitude);
-app.use("/api/posts", post);
-app.use("/system/follows", follow);
-app.use("/system/saves", save);
-app.use("/system/likes", likes);
-app.use("/api/comments", comment);
-
-// admin use
-app.use("/admin/panel", admin_main);
-
-// store part use
-app.use("/store", store);
-app.use("/invertory", invertory);
-
-// recommendations
-app.use("/recommendations", recommendations);
-
-// Set the view engine to EJS
+// View engine
 app.set("view engine", "ejs");
-
-// Specify the directory for view files
 app.set("views", path.join(__dirname, "views"));
 
 app.get("/", (req, res) => {
@@ -165,12 +131,13 @@ app.get("/", (req, res) => {
   });
 });
 
+// 🔹 Rate limit
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15 minut
+  max: 100, // Har bir IP uchun 100 ta so‘rov
 });
-
 app.use(limiter);
 
+// 🔹 Serverni ishga tushirish
 const port = process.env.PORT || 8080;
 app.listen(port, console.log(`Listening on port ${port}...`));
