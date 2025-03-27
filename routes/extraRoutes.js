@@ -68,9 +68,16 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-// log out part codes
+// logout
 router.post("/logout", (req, res) => {
-  res.cookie("token", "").json(true);
+  res
+    .cookie("token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Faqat HTTPS bo'lsa secure bo'ladi
+      sameSite: "strict",
+      expires: new Date(0), // Muddati tugatilgan cookie
+    })
+    .json({ success: true, message: "Logged out successfully" });
 });
 
 module.exports = { router, jwtSecret };
