@@ -1,5 +1,8 @@
 const express = require("express");
-const upload = require("../middleware/upload");
+const { upload, uploadToS3 } = require("../middlewares/uploadMiddleware");
+const { addUser } = require("../controllers/userController");
+
+module.exports = router;
 
 const {
   getUser,
@@ -26,7 +29,7 @@ router.get("/", getUsers);
 router.get("/:id", getUser);
 
 // create user
-router.post("/", upload.single("avatar"), addUser);
+router.post("/", upload.single("avatar"), uploadToS3, addUser);
 
 // edit user by id
 router.put("/:id", editUser);

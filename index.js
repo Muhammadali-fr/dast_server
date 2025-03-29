@@ -11,9 +11,6 @@ const cors = require("cors");
 const logger = require("./middleware/logger");
 const cookieParser = require("cookie-parser");
 
-// 17 minut
-import { S3Client } from "@aws-sdk/client-s3";
-
 // 🔹 Fayl yuklash hajmini oshirish (50MB)
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));

@@ -1,101 +1,103 @@
 const User = require("../models/user.model");
 const bcryptjs = require("bcryptjs");
-const nodemailer = require("nodemailer");
-const OTP = require("../models/otp.model");
 const jwt = require("jsonwebtoken");
+const { uploadToS3 } = require("../services/s3Service");
 
 const cyfer = bcryptjs.genSaltSync(8);
 const jwtSecret = process.env.JWT_SECRET;
 
-// mothod: get
-// get all users
+// mothod: GET
+// Get all users
 const getUsers = async (req, res) => {
   try {
     const users = await User.find();
-    if (!users) {
-      res.status(404).send("we have no users yet...");
+    if (!users || users.length === 0) {
+      return res.status(404).send("We have no users yet...");
     }
-    return res.status(200).send(users);
+    return res.status(200).json(users);
   } catch (err) {
     console.log(err);
-    res.send(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// mothod: get
-// get a user
+// mothod: GET
+// Get a user by ID
 const getUser = async (req, res) => {
-  const id = req.params.id;
-
   try {
-    const user = await User.findById(id);
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).send("User not found");
     }
-    return res.status(200).send(user);
+    return res.status(200).json(user);
   } catch (err) {
     console.error(err);
     return res.status(500).send("Server error");
   }
 };
 
-// mothod: post
-// add new user
+// mothod: POST
+// Register a new user
 const addUser = async (req, res) => {
   try {
-    const { name, username, email, bio, password, avatar } = req.body;
+    const { name, username, email, bio, password } = req.body;
 
-    if (name == null || email == null || username == null || password == null) {
-      return res.status(404).json({ message: "enter all the required fields" });
+    if (!name || !email || !username || !password) {
+      return res.status(400).json({ message: "Enter all required fields" });
     }
 
     const existingEmail = await User.findOne({ email });
     const existingUsername = await User.findOne({ username });
 
     if (existingEmail) {
-      return res.status(404).send("email is already used");
+      return res.status(400).json({ message: "Email is already in use" });
     }
-
     if (existingUsername) {
-      return res.status(404).send("username is already taken");
+      return res.status(400).json({ message: "Username is already taken" });
     }
 
-    const newUser = await new User({
+    let avatarUrl = null;
+    if (req.file) {
+      avatarUrl = await uploadToS3(req.file); // AWS S3 ga yuklash
+    }
+
+    const newUser = new User({
       name,
       username,
       email,
       bio,
       password: bcryptjs.hashSync(password, cyfer),
-      avatar,
+      avatar: avatarUrl,
     });
+
     await newUser.save();
 
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
-      jwtSecret
+      jwtSecret,
+      { expiresIn: "7d" }
     );
 
-    // **Cookie orqali token jo‘natish**
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
     });
 
-    res.status(200).json({ message: "you have created account.", token });
+    res.status(201).json({ message: "Account created successfully", token });
   } catch (err) {
     res
       .status(500)
-      .json({ message: "error while creating user", error: err.message });
+      .json({ message: "Error while creating user", error: err.message });
   }
 };
 
-// mothod: put
-// edit user by id
+// mothod: PUT
+// Edit user by ID
 const editUser = async (req, res) => {
-  const id = res.body.id;
   try {
     const {
+      id,
       name,
       password,
       verificated,
@@ -106,39 +108,55 @@ const editUser = async (req, res) => {
       check,
       balance,
     } = req.body;
-    const editedUser = await User.findByIdAndUpdate(id, {
-      name,
-      password: bcryptjs.hashSync(password, cyfer),
-      verificated,
-      username,
-      avatar,
-      bio,
-      email,
-      check,
-      balance,
-    });
-    return res.status(202).send(editedUser);
+
+    let avatarUrl = avatar;
+    if (req.file) {
+      avatarUrl = await uploadToS3(req.file); // Avatarni yangilash
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        name,
+        password: password ? bcryptjs.hashSync(password, cyfer) : undefined,
+        verificated,
+        username,
+        avatar: avatarUrl,
+        bio,
+        email,
+        check,
+        balance,
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json(updatedUser);
   } catch (err) {
     console.log(err);
-    res.send(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// mothod: delete
-// delete user by id
+// mothod: DELETE
+// Delete user by ID
 const deleteUser = async (req, res) => {
-  const removingUserId = req.params.id;
   try {
-    const deletedUser = await User.findByIdAndDelete(removingUserId);
+    const deletedUser = await User.findByIdAndDelete(req.params.id);
     if (!deletedUser) {
-      res.status(404).send("user is not defined...");
+      return res.status(404).send("User not found...");
     }
-    return res.status(203).send(deleteUser);
+    return res.status(200).json({ message: "User deleted successfully" });
   } catch (err) {
     console.log(err);
-    res.send(err);
+    return res.status(500).json({ error: err.message });
   }
 };
+
+module.exports = { getUsers, getUser, addUser, editUser, deleteUser };
 
 // transporter
 
