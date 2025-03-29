@@ -75,7 +75,12 @@ const addUser = async (req, res) => {
       jwtSecret
     );
 
-    res.cookie("token", token);
+    // **Cookie orqali token jo‘natish**
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+    });
 
     res.status(200).json({ message: "you have created account.", token });
   } catch (err) {
